@@ -7,7 +7,7 @@ import '../../theme/app_colors.dart';
 import '../home/home_screen.dart';
 import '../widgets/app_scaffold.dart';
 import 'login_screen.dart';
-import 'verify_email_otp_screen.dart';
+import 'verify_email_screen.dart';
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -40,17 +40,11 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _refreshUserAndProfile(User user) async {
     try {
       await user.reload().timeout(const Duration(seconds: 8));
-    } catch (_) {
-      // Routing must continue even if user reload fails.
-    }
+    } catch (_) {}
 
     try {
-      await _authService
-          .ensureCurrentUserDocument()
-          .timeout(const Duration(seconds: 8));
-    } catch (_) {
-      // Do not block gate on Firestore self-heal.
-    }
+      await _authService.ensureCurrentUserDocument().timeout(const Duration(seconds: 8));
+    } catch (_) {}
 
     if (mounted) {
       setState(() {});
@@ -77,7 +71,6 @@ class _AuthGateState extends State<AuthGate> {
 
         final User effectiveUser = _auth.currentUser ?? streamUser;
 
-        // PHASE 2: Live monitoring of user status in Firestore
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: _firestore
               .collection(AuthService.usersCollection)
@@ -91,23 +84,22 @@ class _AuthGateState extends State<AuthGate> {
 
             final data = userDocSnapshot.data?.data();
 
-            // If document doesn't exist yet, show verification (safety measure)
             if (data == null) {
-              return VerifyEmailOtpScreen(email: effectiveUser.email ?? '');
+              return VerifyEmailScreen(email: effectiveUser.email ?? '');
             }
 
             final bool emailOtpVerified = data['emailOtpVerified'] == true;
+            final bool loginOtpPending = data['loginOtpPending'] == true;
 
-            // Security Block: Force verification if not verified in Firestore
-            if (!emailOtpVerified) {
+            // Force verification if account not verified OR session is pending OTP
+            if (!emailOtpVerified || loginOtpPending) {
               final String emailFromDoc = (data['email'] as String? ?? '').trim();
               final String email = emailFromDoc.isNotEmpty
                   ? emailFromDoc
                   : (effectiveUser.email ?? '');
-              return VerifyEmailOtpScreen(email: email);
+              return VerifyEmailScreen(email: email);
             }
 
-            // Grant Access
             return const HomeScreen();
           },
         );

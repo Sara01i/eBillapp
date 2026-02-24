@@ -6,6 +6,7 @@ import '../widgets/app_text_field.dart';
 import '../widgets/auth_scaffold.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
+import 'verify_email_screen.dart'; // Use the renamed file
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,8 +40,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
     try {
+      // 1) Just sign in. The AuthGate is responsible for routing.
       await _auth.login(email, password);
-      // AuthGate handles routing to OTP/Home.
+
+      // 2) After successful login, mark this session as requiring OTP.
+      await _auth.markLoginOtpPending(true);
+
+      // 3) Send the OTP email.
+      await _auth.sendEmailOtpForEmail(email);
+
+      // No navigation here. AuthGate will see the pending flag and show the OTP screen.
+
     } catch (error) {
       if (mounted) {
         _showMessage(_auth.toUserMessage(error));
