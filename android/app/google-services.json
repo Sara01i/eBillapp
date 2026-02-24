@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "128912414910",
+    "project_id": "ebill-e8f55",
+    "storage_bucket": "ebill-e8f55.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128912414910:android:83afa68d8110864a55a6ef",
+        "android_client_info": {
+          "package_name": "com.example.my_frist_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgCuktkbWTDSdEKVe_LyPX_SLUSpD4ahw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

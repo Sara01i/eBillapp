@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid) &&
+        request.resource.data.uid == request.auth.uid &&
+        (
+          !('emailOtpVerified' in request.resource.data) ||
+          request.resource.data.emailOtpVerified == false
+        );
+
+      allow update: if isOwner(uid) &&
+        request.resource.data.uid == resource.data.uid &&
+        (
+          request.resource.data.emailOtpVerified == resource.data.emailOtpVerified ||
+          (
+            !('emailOtpVerified' in resource.data) &&
+            request.resource.data.emailOtpVerified == false
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+
+      allow delete: if signedIn() &&
+        resource.data.ownerId == request.auth.uid;
+    }
+
+    // OTP documents are server-managed via Cloud Functions only.
+    match /email_otps/{uid} {
+      allow read, write: if false;
+    }
+  }
+}
