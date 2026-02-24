@@ -1,124 +1,30 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import '../../services/auth_service.dart';
-import '../../theme/app_colors.dart';
 import '../home/home_screen.dart';
-import '../widgets/app_scaffold.dart';
 import 'login_screen.dart';
-import 'verify_email_screen.dart';
 
-class AuthGate extends StatefulWidget {
+class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _authService = AuthService();
-
-  bool _syncInProgress = false;
-  String? _lastSyncUid;
-
-  void _syncUserInBackground(User user) {
-    if (_syncInProgress || _lastSyncUid == user.uid) {
-      return;
-    }
-
-    _syncInProgress = true;
-    _lastSyncUid = user.uid;
-
-    _refreshUserAndProfile(user).whenComplete(() {
-      _syncInProgress = false;
-    });
-  }
-
-  Future<void> _refreshUserAndProfile(User user) async {
-    try {
-      await user.reload().timeout(const Duration(seconds: 8));
-    } catch (_) {}
-
-    try {
-      await _authService.ensureCurrentUserDocument().timeout(const Duration(seconds: 8));
-    } catch (_) {}
-
-    if (mounted) {
-      setState(() {});
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: _auth.userChanges(),
-      builder: (context, authSnapshot) {
-        if (authSnapshot.connectionState == ConnectionState.waiting &&
-            !authSnapshot.hasData) {
-          return const _GateLoadingView();
+      stream: FirebaseAuth.instance.userChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        final User? streamUser = authSnapshot.data;
-        if (streamUser == null) {
-          _lastSyncUid = null;
+        // If user is not logged in, show LoginScreen
+        if (!snapshot.hasData) {
           return const LoginScreen();
         }
 
-        _syncUserInBackground(streamUser);
-
-        final User effectiveUser = _auth.currentUser ?? streamUser;
-
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: _firestore
-              .collection(AuthService.usersCollection)
-              .doc(effectiveUser.uid)
-              .snapshots(),
-          builder: (context, userDocSnapshot) {
-            if (userDocSnapshot.connectionState == ConnectionState.waiting &&
-                !userDocSnapshot.hasData) {
-              return const _GateLoadingView();
-            }
-
-            final data = userDocSnapshot.data?.data();
-
-            if (data == null) {
-              return VerifyEmailScreen(email: effectiveUser.email ?? '');
-            }
-
-            final bool emailOtpVerified = data['emailOtpVerified'] == true;
-            final bool loginOtpPending = data['loginOtpPending'] == true;
-
-            // Force verification if account not verified OR session is pending OTP
-            if (!emailOtpVerified || loginOtpPending) {
-              final String emailFromDoc = (data['email'] as String? ?? '').trim();
-              final String email = emailFromDoc.isNotEmpty
-                  ? emailFromDoc
-                  : (effectiveUser.email ?? '');
-              return VerifyEmailScreen(email: email);
-            }
-
-            return const HomeScreen();
-          },
-        );
+        // If user is logged in, show HomeScreen directly
+        return const HomeScreen();
       },
-    );
-  }
-}
-
-class _GateLoadingView extends StatelessWidget {
-  const _GateLoadingView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AppScaffold(
-      title: 'جاري التحقق',
-      subtitle: 'يتم تجهيز جلسة المستخدم...',
-      child: Center(
-        child: CircularProgressIndicator(color: AppColors.accent),
-      ),
     );
   }
 }

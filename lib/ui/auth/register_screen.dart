@@ -4,7 +4,6 @@ import '../../services/auth_service.dart';
 import '../widgets/app_primary_button.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/auth_scaffold.dart';
-import 'verify_email_otp_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -47,7 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (password != confirmPassword) {
-      _showMessage('كلمتا المرور غير متطابقتين.');
+      _showMessage('كلمتا المرور غير متطابقين.');
       return;
     }
 
@@ -58,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final String uid = await _auth.register(
+      await _auth.register(
         email: email,
         password: password,
         name: name,
@@ -67,16 +66,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      _showMessage('تم إنشاء الحساب بنجاح. يرجى التحقق من بريدك الإلكتروني.');
+      _showMessage('تم إنشاء الحساب بنجاح.');
 
-      // PHASE 1: الانتقال الفوري والمؤمن
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VerifyEmailOtpScreen(email: email),
-        ),
-        (route) => false, // منع العودة للخلف
-      );
+      // Navigate will be handled by AuthGate automatically
     } catch (error) {
       if (mounted) {
         _showMessage(_auth.toUserMessage(error));
